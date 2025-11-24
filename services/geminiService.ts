@@ -1,83 +1,102 @@
 import { GoogleGenAI } from "@google/genai";
-import { NewsItem } from "../types";
 import { SYSTEM_INSTRUCTION } from "../constants";
+import { NewsItem, RegionKey, Region, ScriptRequest } from "../types";
+import { REGIONS } from "../constants";
 
-// Ensure API key is present (handled by environment in this context)
 const apiKey = process.env.API_KEY || '';
-
 const ai = new GoogleGenAI({ apiKey });
 
-export const fetchRegionalNews = async (regionFullName: string): Promise<NewsItem[]> => {
+export const fetchRegionalNews = async (regionKey: RegionKey): Promise<NewsItem[]> => {
   if (!apiKey) {
-    throw new Error("API Key is missing. Please set process.env.API_KEY.");
+    throw new Error("API Key is missing.");
   }
 
+  const region = REGIONS.find(r => r.key === regionKey);
+  const regionName = region ? region.fullName : regionKey;
+
+  const prompt = `
+    Найди последние и самые важные новости за последние 24 часа для региона: ${regionName}.
+    Составь подборку из 6-8 ключевых новостей.
+    
+    Верни результат В ФОРМАТЕ JSON:
+    [
+      {
+        "title": "...",
+        "summary": "...",
+        "telegramPostDraft": "...",
+        "url": "...",
+        "source": "..."
+      }
+    ]
+  `;
+
   try {
-    const model = 'gemini-2.5-flash';
-    
-    // We cannot use strict JSON schema mode (responseMimeType: application/json) with googleSearch tool.
-    // We rely on the system instruction to format the output as JSON and parse it manually.
-
-    const prompt = `Find the latest news and important events specifically for ${regionFullName} happened in the last 24 hours. 
-    Conduct a comprehensive search covering:
-    - Official government statements and decrees
-    - Infrastructure updates (water, electricity, roads)
-    - Emergency incidents and shelling reports
-    - Social sphere (pensions, schools, hospitals)
-    - Cultural events and daily life
-    
-    Target Quantity: Return 8 to 12 distinct news items. 
-    Ensure a wide coverage of events. Do not duplicate stories.`;
-
     const response = await ai.models.generateContent({
-      model: model,
+      model: 'gemini-2.5-flash',
       contents: prompt,
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
-        tools: [{ googleSearch: {} }], // Enable Grounding
+        tools: [{ googleSearch: {} }],
+        // Note: responseMimeType: 'application/json' is not supported with tools yet, 
+        // so we parse manually.
       },
     });
 
-    let jsonText = response.text;
+    const text = response.text || '';
     
-    if (!jsonText) {
-      throw new Error("No data returned from Gemini.");
+    // Manual JSON extraction/cleaning
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      console.error("No JSON found in response", text);
+      return [];
     }
 
-    // Clean up potential markdown formatting (```json ... ```) wrapping the JSON
-    jsonText = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
+    const jsonString = jsonMatch[0];
+    const data = JSON.parse(jsonString);
 
-    let rawData;
-    try {
-        rawData = JSON.parse(jsonText);
-    } catch (e) {
-        console.error("JSON Parse Error:", e);
-        console.log("Raw Text:", jsonText);
-        throw new Error("Failed to parse news data. The AI response was not valid JSON.");
-    }
-
-    if (!Array.isArray(rawData)) {
-        throw new Error("AI response was not a JSON array.");
-    }
-
-    const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-    let fallbackSource = "Google Search";
-    if (groundingChunks.length > 0 && groundingChunks[0].web?.uri) {
-        fallbackSource = groundingChunks[0].web.uri;
-    }
-
-    return rawData.map((item: any, index: number) => ({
-      id: `news-${Date.now()}-${index}`,
+    return data.map((item: any, index: number) => ({
+      id: `${regionKey}-${Date.now()}-${index}`,
       title: item.title,
       summary: item.summary,
-      source: item.source || fallbackSource,
       telegramPostDraft: item.telegramPostDraft,
-      url: item.source && item.source.startsWith('http') ? item.source : undefined,
-      timestamp: item.timestamp || new Date().toLocaleTimeString(),
+      url: item.url,
+      source: item.source || 'Источник',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }));
 
   } catch (error) {
     console.error("Error fetching news:", error);
+    throw error;
+  }
+};
+
+export const generateScript = async (request: ScriptRequest): Promise<string> => {
+  if (!apiKey) {
+    throw new Error("API Key is missing.");
+  }
+
+  const prompt = `
+    Act as a professional scriptwriter. Write a short voice-over script (approx 50-100 words).
+    
+    Topic/Product: ${request.topic}
+    Type: ${request.type}
+    Tone: ${request.tone}
+    
+    Format the output clearly with:
+    [SFX suggestions in brackets]
+    (Tone directions in parentheses)
+    Spoken text.
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+    });
+
+    return response.text || "No script generated.";
+  } catch (error) {
+    console.error("Error generating script:", error);
     throw error;
   }
 };

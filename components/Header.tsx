@@ -1,27 +1,32 @@
 import React from 'react';
-import { Bot, Radio } from 'lucide-react';
+import { Newspaper, Radio } from 'lucide-react';
 
 export const Header: React.FC = () => {
   return (
-    <header className="w-full bg-slate-800 border-b border-slate-700 p-4 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
+    <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="bg-blue-600 p-2 rounded-lg">
-            <Bot className="w-6 h-6 text-white" />
+          <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
+            <Newspaper className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white tracking-tight">
-              NewsFlow <span className="text-blue-400">Bot Manager</span>
+            <h1 className="text-lg font-bold text-slate-100 tracking-tight">
+              News<span className="text-blue-500">Bot</span> Monitor
             </h1>
-            <p className="text-xs text-slate-400 flex items-center gap-1">
-              <Radio className="w-3 h-3 text-green-500 animate-pulse" />
-              Regional Monitoring Active
+            <p className="text-[10px] text-slate-500 font-mono uppercase tracking-wider">
+              ДНР • ЛНР • ЗО • ХО
             </p>
           </div>
         </div>
-        <div className="text-right hidden sm:block">
-          <p className="text-xs text-slate-500 uppercase font-semibold tracking-wider">Powered by</p>
-          <p className="text-sm font-bold text-slate-300">Gemini 2.5 Flash</p>
+        
+        <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-full border border-slate-700">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                </span>
+                <span className="text-xs font-medium text-slate-300">System Online</span>
+            </div>
         </div>
       </div>
     </header>

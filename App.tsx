@@ -1,138 +1,105 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { RegionTabs } from './components/RegionTabs';
 import { NewsCard } from './components/NewsCard';
-import { REGIONS } from './constants';
-import { RegionKey, NewsItem, GenerationState } from './types';
+import { NewsItem, RegionKey } from './types';
 import { fetchRegionalNews } from './services/geminiService';
-import { Search, RotateCw, AlertCircle, Newspaper } from 'lucide-react';
+import { REGIONS } from './constants';
+import { RefreshCw, AlertCircle, Search } from 'lucide-react';
 
 const App: React.FC = () => {
-  const [selectedRegion, setSelectedRegion] = useState<RegionKey>('DNR');
+  const [activeRegion, setActiveRegion] = useState<RegionKey>('dnr');
   const [news, setNews] = useState<Record<RegionKey, NewsItem[]>>({
-    DNR: [],
-    LNR: [],
-    ZO: [],
-    HO: [],
+    dnr: [], lnr: [], zo: [], ho: []
   });
-  
-  const [status, setStatus] = useState<GenerationState>({
-    isLoading: false,
-    error: null,
-  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleFetchNews = async () => {
-    setStatus({ isLoading: true, error: null });
-    
+  const loadNews = async (region: RegionKey) => {
+    setLoading(true);
+    setError(null);
     try {
-      const regionConfig = REGIONS.find(r => r.key === selectedRegion);
-      if (!regionConfig) return;
-
-      const items = await fetchRegionalNews(regionConfig.fullName);
-      
+      const items = await fetchRegionalNews(region);
       setNews(prev => ({
         ...prev,
-        [selectedRegion]: items
+        [region]: items
       }));
-    } catch (err: any) {
-      setStatus({ 
-        isLoading: false, 
-        error: err.message || "Failed to fetch news. Please try again." 
-      });
+    } catch (err) {
+      setError("Не удалось загрузить новости. Проверьте API ключ или попробуйте позже.");
     } finally {
-      setStatus(prev => ({ ...prev, isLoading: false }));
+      setLoading(false);
     }
   };
 
-  const currentNews = news[selectedRegion];
-  const regionName = REGIONS.find(r => r.key === selectedRegion)?.fullName;
+  // Initial load
+  useEffect(() => {
+    // Only load if empty to prevent excessive API calls on re-renders,
+    // in a real app might want to check timestamp expiry
+    if (news[activeRegion].length === 0) {
+      loadNews(activeRegion);
+    }
+  }, [activeRegion]);
+
+  const currentItems = news[activeRegion];
+  const activeRegionData = REGIONS.find(r => r.key === activeRegion);
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-200">
+    <div className="min-h-screen bg-slate-950 text-slate-200 pb-20">
       <Header />
 
-      <main className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+      <main className="max-w-7xl mx-auto px-4 py-8">
         
-        {/* Intro / Dashboard Header */}
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-white mb-2">News Monitor</h2>
-          <p className="text-slate-400">
-            Select a region to find the latest news using Google Search Grounding and generate Telegram posts automatically.
-          </p>
-        </div>
-
         {/* Controls */}
-        <RegionTabs 
-          selectedRegion={selectedRegion} 
-          onSelect={setSelectedRegion} 
-          isLoading={status.isLoading}
-        />
-
-        {/* Action Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
-          <div className="flex items-center gap-3">
-             <div className="bg-slate-700 p-2 rounded-lg">
-                <Newspaper className="w-5 h-5 text-slate-300" />
-             </div>
-             <div>
-                <h3 className="font-semibold text-white">{regionName}</h3>
-                <p className="text-xs text-slate-400">
-                    {currentNews.length > 0 
-                        ? `${currentNews.length} items found` 
-                        : "No news loaded yet"}
-                </p>
-             </div>
-          </div>
-          
-          <button
-            onClick={handleFetchNews}
-            disabled={status.isLoading}
-            className={`
-                flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all
-                ${status.isLoading 
-                    ? 'bg-slate-700 text-slate-400 cursor-wait' 
-                    : 'bg-white text-slate-900 hover:bg-blue-50 hover:text-blue-700 shadow-lg shadow-white/5'}
-            `}
-          >
-            {status.isLoading ? (
-                <>
-                    <RotateCw className="w-5 h-5 animate-spin" />
-                    Searching & Generating...
-                </>
-            ) : (
-                <>
-                    <Search className="w-5 h-5" />
-                    Find News for {selectedRegion}
-                </>
-            )}
-          </button>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            <RegionTabs 
+                selectedRegion={activeRegion} 
+                onSelect={setActiveRegion} 
+                isLoading={loading}
+            />
+            
+            <button 
+                onClick={() => loadNews(activeRegion)}
+                disabled={loading}
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-300 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+            >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                {loading ? 'Сканирование...' : 'Обновить ленту'}
+            </button>
         </div>
 
-        {/* Error Message */}
-        {status.error && (
-            <div className="mb-8 p-4 bg-red-500/10 border border-red-500/50 rounded-xl flex items-start gap-3 text-red-400">
-                <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-                <p>{status.error}</p>
+        {/* Content Area */}
+        {error && (
+            <div className="mb-8 p-4 bg-red-900/20 border border-red-800/50 rounded-lg flex items-center gap-3 text-red-400">
+                <AlertCircle className="w-5 h-5" />
+                {error}
             </div>
         )}
 
-        {/* Content Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-            {currentNews.map((item) => (
-                <NewsCard key={item.id} item={item} />
-            ))}
-        </div>
-
-        {/* Empty State */}
-        {!status.isLoading && currentNews.length === 0 && !status.error && (
-            <div className="text-center py-20 border-2 border-dashed border-slate-800 rounded-3xl">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-800 mb-4">
-                    <Search className="w-8 h-8 text-slate-500" />
+        {loading && currentItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-slate-500">
+                <div className="relative w-16 h-16 mb-6">
+                    <div className="absolute inset-0 border-4 border-slate-800 rounded-full"></div>
+                    <div className="absolute inset-0 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                 </div>
-                <h3 className="text-lg font-medium text-white mb-1">Ready to search</h3>
-                <p className="text-slate-400 max-w-sm mx-auto">
-                    Click the button above to search Google for the latest events in {regionName}.
-                </p>
+                <p className="font-mono text-sm animate-pulse">Анализ источников информации...</p>
+                <p className="text-xs mt-2 opacity-50">Поиск новостей по региону {activeRegionData?.fullName}</p>
+            </div>
+        ) : currentItems.length === 0 && !error ? (
+             <div className="flex flex-col items-center justify-center py-20 text-slate-500 bg-slate-900/30 border border-slate-800/50 rounded-2xl border-dashed">
+                <Search className="w-12 h-12 mb-4 opacity-20" />
+                <p>Новости не найдены или лента пуста.</p>
+                <button 
+                    onClick={() => loadNews(activeRegion)}
+                    className="mt-4 text-blue-400 hover:text-blue-300 text-sm hover:underline"
+                >
+                    Попробовать снова
+                </button>
+            </div>
+        ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                {currentItems.map(item => (
+                    <NewsCard key={item.id} item={item} />
+                ))}
             </div>
         )}
 

@@ -1,23 +1,44 @@
-export interface NewsItem {
-  id: string;
-  title: string;
-  summary: string;
-  source: string;
-  telegramPostDraft: string;
-  url?: string;
-  timestamp: string;
-}
+export type RegionKey = 'dnr' | 'lnr' | 'zo' | 'ho';
 
-export type RegionKey = 'DNR' | 'LNR' | 'ZO' | 'HO';
-
-export interface RegionConfig {
+export interface Region {
   key: RegionKey;
   name: string;
   fullName: string;
   color: string;
 }
 
+export interface NewsItem {
+  id: string;
+  title: string;
+  summary: string;
+  telegramPostDraft: string;
+  url?: string;
+  timestamp: string;
+  source?: string;
+}
+
+export interface NewsState {
+  items: NewsItem[];
+  isLoading: boolean;
+  error: string | null;
+  lastUpdated: Date | null;
+}
+
+export interface DemoTrack {
+  id: string;
+  title: string;
+  category: string;
+  duration: string;
+}
+
+export interface ScriptRequest {
+  topic: string;
+  tone: string;
+  type: string;
+}
+
 export interface GenerationState {
   isLoading: boolean;
   error: string | null;
+  result: string | null;
 }
