@@ -35,7 +35,8 @@ const App: React.FC = () => {
 
   // Initial load
   useEffect(() => {
-    if (news[activeRegion].length === 0) {
+    const currentRegionNews = news[activeRegion];
+    if (currentRegionNews.length === 0 && !loading && !error) {
       loadNews(activeRegion);
     }
   }, [activeRegion]);
@@ -84,7 +85,7 @@ const App: React.FC = () => {
                 <p className="font-mono text-sm animate-pulse">Анализ источников информации...</p>
                 <p className="text-xs mt-2 opacity-50">Поиск новостей по региону {activeRegionData?.fullName}</p>
             </div>
-        ) : currentItems.length === 0 && !error ? (
+        ) : currentItems.length === 0 && !error && !loading ? (
              <div className="flex flex-col items-center justify-center py-20 text-slate-500 bg-slate-900/30 border border-slate-800/50 rounded-2xl border-dashed">
                 <Search className="w-12 h-12 mb-4 opacity-20" />
                 <p>Новости не найдены или лента пуста.</p>
