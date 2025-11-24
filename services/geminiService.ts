@@ -3,12 +3,13 @@ import { GoogleGenAI } from "@google/genai";
 import { SYSTEM_INSTRUCTION, REGIONS } from "../constants";
 import { NewsItem, RegionKey, ScriptRequest } from "../types";
 
+// Safe API key access
 const apiKey = process.env.API_KEY || '';
 const ai = new GoogleGenAI({ apiKey });
 
 export const fetchRegionalNews = async (regionKey: RegionKey): Promise<NewsItem[]> => {
   if (!apiKey) {
-    throw new Error("API Key is missing.");
+    throw new Error("API Key is missing. Please check your environment variables.");
   }
 
   const region = REGIONS.find(r => r.key === regionKey);
@@ -43,18 +44,22 @@ export const fetchRegionalNews = async (regionKey: RegionKey): Promise<NewsItem[
     const text = response.text || '';
     
     // Manual JSON extraction/cleaning
-    // Matches the first array found in the text, handling potential newlines/markdown formatting
     const jsonMatch = text.match(/\[[\s\S]*\]/);
     if (!jsonMatch) {
-      console.error("No JSON found in response", text);
+      console.warn("No JSON array found in response", text);
       return [];
     }
 
     const jsonString = jsonMatch[0];
-    const data = JSON.parse(jsonString);
+    let data;
+    try {
+        data = JSON.parse(jsonString);
+    } catch (e) {
+        console.error("Failed to parse JSON", e);
+        return [];
+    }
 
     if (!Array.isArray(data)) {
-        console.error("Parsed data is not an array", data);
         return [];
     }
 
@@ -74,17 +79,15 @@ export const fetchRegionalNews = async (regionKey: RegionKey): Promise<NewsItem[
   }
 };
 
+// Retained to prevent build errors in ScriptGenerator.tsx
 export const generateScript = async (request: ScriptRequest): Promise<string> => {
-  if (!apiKey) {
-    throw new Error("API Key is missing.");
-  }
+  if (!apiKey) throw new Error("API Key is missing.");
 
   const prompt = `
     Create a voice-over script for a ${request.type}.
     Topic: ${request.topic}
     Tone: ${request.tone}
-    
-    Output only the raw script text suitable for reading aloud. Do not include markdown formatting or explanations unless they are stage directions in brackets.
+    Output only the raw script text.
   `;
 
   try {
@@ -92,7 +95,6 @@ export const generateScript = async (request: ScriptRequest): Promise<string> =>
       model: 'gemini-2.5-flash',
       contents: prompt,
     });
-
     return response.text || '';
   } catch (error) {
     console.error("Error generating script:", error);

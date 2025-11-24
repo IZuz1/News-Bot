@@ -25,9 +25,9 @@ const App: React.FC = () => {
         ...prev,
         [region]: items
       }));
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError("Не удалось загрузить новости. Проверьте API ключ или попробуйте позже.");
+      setError(err.message || "Не удалось загрузить новости. Проверьте API ключ или попробуйте позже.");
     } finally {
       setLoading(false);
     }
@@ -35,7 +35,6 @@ const App: React.FC = () => {
 
   // Initial load
   useEffect(() => {
-    // Check if we already have news for this region to avoid spamming API on tab switch
     if (news[activeRegion].length === 0) {
       loadNews(activeRegion);
     }

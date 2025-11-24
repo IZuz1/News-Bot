@@ -25,6 +25,7 @@ export interface NewsState {
   lastUpdated: Date | null;
 }
 
+// These types are retained to prevent build errors in legacy components
 export interface DemoTrack {
   title: string;
   category: string;
