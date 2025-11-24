@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { Newspaper, Radio } from 'lucide-react';
+import { Newspaper } from 'lucide-react';
 
 export const Header: React.FC = () => {
   return (

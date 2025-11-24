@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { RegionTabs } from './components/RegionTabs';
@@ -25,6 +26,7 @@ const App: React.FC = () => {
         [region]: items
       }));
     } catch (err) {
+      console.error(err);
       setError("Не удалось загрузить новости. Проверьте API ключ или попробуйте позже.");
     } finally {
       setLoading(false);
@@ -33,18 +35,17 @@ const App: React.FC = () => {
 
   // Initial load
   useEffect(() => {
-    // Only load if empty to prevent excessive API calls on re-renders,
-    // in a real app might want to check timestamp expiry
+    // Check if we already have news for this region to avoid spamming API on tab switch
     if (news[activeRegion].length === 0) {
       loadNews(activeRegion);
     }
   }, [activeRegion]);
 
-  const currentItems = news[activeRegion];
+  const currentItems = news[activeRegion] || [];
   const activeRegionData = REGIONS.find(r => r.key === activeRegion);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 pb-20">
+    <div className="min-h-screen bg-slate-950 text-slate-200 pb-20 font-sans">
       <Header />
 
       <main className="max-w-7xl mx-auto px-4 py-8">
@@ -60,7 +61,7 @@ const App: React.FC = () => {
             <button 
                 onClick={() => loadNews(activeRegion)}
                 disabled={loading}
-                className="flex items-center justify-center gap-2 px-6 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-300 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-300 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shadow-sm"
             >
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                 {loading ? 'Сканирование...' : 'Обновить ленту'}
@@ -70,8 +71,8 @@ const App: React.FC = () => {
         {/* Content Area */}
         {error && (
             <div className="mb-8 p-4 bg-red-900/20 border border-red-800/50 rounded-lg flex items-center gap-3 text-red-400">
-                <AlertCircle className="w-5 h-5" />
-                {error}
+                <AlertCircle className="w-5 h-5 shrink-0" />
+                <span>{error}</span>
             </div>
         )}
 

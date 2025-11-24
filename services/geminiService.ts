@@ -1,7 +1,7 @@
+
 import { GoogleGenAI } from "@google/genai";
-import { SYSTEM_INSTRUCTION } from "../constants";
-import { NewsItem, RegionKey, Region, ScriptRequest } from "../types";
-import { REGIONS } from "../constants";
+import { SYSTEM_INSTRUCTION, REGIONS } from "../constants";
+import { NewsItem, RegionKey, ScriptRequest } from "../types";
 
 const apiKey = process.env.API_KEY || '';
 const ai = new GoogleGenAI({ apiKey });
@@ -37,14 +37,13 @@ export const fetchRegionalNews = async (regionKey: RegionKey): Promise<NewsItem[
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         tools: [{ googleSearch: {} }],
-        // Note: responseMimeType: 'application/json' is not supported with tools yet, 
-        // so we parse manually.
       },
     });
 
     const text = response.text || '';
     
     // Manual JSON extraction/cleaning
+    // Matches the first array found in the text, handling potential newlines/markdown formatting
     const jsonMatch = text.match(/\[[\s\S]*\]/);
     if (!jsonMatch) {
       console.error("No JSON found in response", text);
@@ -54,11 +53,16 @@ export const fetchRegionalNews = async (regionKey: RegionKey): Promise<NewsItem[
     const jsonString = jsonMatch[0];
     const data = JSON.parse(jsonString);
 
+    if (!Array.isArray(data)) {
+        console.error("Parsed data is not an array", data);
+        return [];
+    }
+
     return data.map((item: any, index: number) => ({
       id: `${regionKey}-${Date.now()}-${index}`,
-      title: item.title,
-      summary: item.summary,
-      telegramPostDraft: item.telegramPostDraft,
+      title: item.title || 'Без заголовка',
+      summary: item.summary || 'Нет описания',
+      telegramPostDraft: item.telegramPostDraft || '',
       url: item.url,
       source: item.source || 'Источник',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -76,16 +80,11 @@ export const generateScript = async (request: ScriptRequest): Promise<string> =>
   }
 
   const prompt = `
-    Act as a professional scriptwriter. Write a short voice-over script (approx 50-100 words).
-    
-    Topic/Product: ${request.topic}
-    Type: ${request.type}
+    Create a voice-over script for a ${request.type}.
+    Topic: ${request.topic}
     Tone: ${request.tone}
     
-    Format the output clearly with:
-    [SFX suggestions in brackets]
-    (Tone directions in parentheses)
-    Spoken text.
+    Output only the raw script text suitable for reading aloud. Do not include markdown formatting or explanations unless they are stage directions in brackets.
   `;
 
   try {
@@ -94,7 +93,7 @@ export const generateScript = async (request: ScriptRequest): Promise<string> =>
       contents: prompt,
     });
 
-    return response.text || "No script generated.";
+    return response.text || '';
   } catch (error) {
     console.error("Error generating script:", error);
     throw error;

@@ -1,3 +1,4 @@
+
 export type RegionKey = 'dnr' | 'lnr' | 'zo' | 'ho';
 
 export interface Region {
@@ -25,7 +26,6 @@ export interface NewsState {
 }
 
 export interface DemoTrack {
-  id: string;
   title: string;
   category: string;
   duration: string;
