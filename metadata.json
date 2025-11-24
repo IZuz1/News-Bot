@@ -1,0 +1,5 @@
+{
+  "name": "Copy of Regional News Monitor AI",
+  "description": "A dashboard to aggregate news from specific regions (DNR, LNR, ZO, HO) using Google Search Grounding and generate formatted Telegram posts using Gemini 2.5 Flash.",
+  "requestFramePermissions": []
+}
